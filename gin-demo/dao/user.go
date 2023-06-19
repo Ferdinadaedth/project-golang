@@ -1,69 +1,3 @@
-//package dao
-
-/*import (
-	"database/sql"
-	"fmt"
-)*/
-
-/*const path1 = "D:\\Edc\\golandprojects\\go1.20.3\\gin-demo\\dao\\data\\message.csv"
-
-var (
-	mutex    sync.Mutex
-	database map[string]string
-)
-
-/*func init() {
-	users, err := loadUsers()
-	if err != nil {
-		panic(err)
-	}
-	database = users
-}*/
-/*
-func AddUser(username, password string) error {
-	mutex.Lock()
-	defer mutex.Unlock()
-	database[username] = password
-	err := saveUsers(database)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// 若没有这个用户返回 false，反之返回 true
-func SelectUser(username string) bool {
-	mutex.Lock()
-	defer mutex.Unlock()
-
-	if database[username] == "" {
-		return false
-	}
-	return true
-}
-
-func SelectPasswordFromUsername(username string) string {
-	mutex.Lock()
-	defer mutex.Unlock()
-	database, _ = Loadpassword(username)
-	return database[username]
-}
-func AddMessage(message model.Message) {
-	file, err := os.OpenFile(path1, os.O_APPEND|os.O_WRONLY, 0600)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-
-	writer := csv.NewWriter(file)
-	defer writer.Flush()
-
-	if err := writer.Write([]string{message.Id, message.Text, message.CreatedAt.Format("2006-01-02 15:04:05")}); err != nil {
-		log.Fatal(err)
-	}
-}
-*/
 package dao
 
 import (
@@ -75,8 +9,8 @@ import (
 // 数据库连接信息
 const (
 	userName = "root"
-	Password = "yx041110"
-	ip       = "127.0.0.1"
+	Password = "123456"
+	ip       = "ten.ferdinandaedth.top"
 	port     = "3306"
 	dbName   = "userdb"
 )

@@ -17,8 +17,8 @@ import (
 
 const (
 	userName = "root"
-	Password = "yx041110"
-	ip       = "127.0.0.1"
+	Password = "123456"
+	ip       = "ten.ferdinandaedth.top"
 	port     = "3306"
 	dbName   = "userdb"
 )
@@ -69,6 +69,64 @@ func getquestion(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{"res": allquestion})
 
+}
+func deleteq(c *gin.Context) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	question := c.PostForm("questionid")
+	questionid, abc := strconv.Atoi(question)
+	if abc != nil {
+		panic(abc)
+	}
+	flag := dao.Selectquestion(questionid)
+	if !flag {
+		utils.RespFail(c, "question doesn't exists")
+	}
+	_, err = db.Exec("delete from question where id=?", questionid)
+	if err != nil {
+		panic(err.Error())
+	}
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM answer WHERE questionid=?", questionid).Scan(&count)
+	if err != nil {
+		panic(err.Error())
+	}
+	if count > 0 {
+		_, err = db.Exec("delete from answer where questionid=?", questionid)
+		if err != nil {
+			panic(err.Error())
+		}
+	}
+	utils.RespSuccess(c, "successfully delete the question")
+}
+func deletea(c *gin.Context) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	answer := c.PostForm("id")
+	answerid, abc := strconv.Atoi(answer)
+	if abc != nil {
+		panic(abc)
+	}
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM answer WHERE id=?", answerid).Scan(&count)
+	if err != nil {
+		panic(err.Error())
+	}
+	if count > 0 {
+		_, err = db.Exec("delete from answer where id=?", answerid)
+		if err != nil {
+			panic(err.Error())
+		}
+		utils.RespSuccess(c, "successfully delete the answer")
+	} else {
+		utils.RespFail(c, "no such answer")
+	}
 }
 func getanswer(c *gin.Context) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))

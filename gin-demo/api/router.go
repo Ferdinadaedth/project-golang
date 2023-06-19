@@ -20,6 +20,8 @@ func InitRouter() {
 	r.POST("/login/qa", middleware.JWTAuthMiddleware(), getqa)
 	r.POST("/login/modifyq", middleware.JWTAuthMiddleware(), modifyq)
 	r.POST("/login/modifya", middleware.JWTAuthMiddleware(), modifya)
+	r.POST("/login/deleteq", middleware.JWTAuthMiddleware(), deleteq)
+	r.POST("/login/deletea", middleware.JWTAuthMiddleware(), deletea)
 	UserRouter := r.Group("/user")
 	{
 		UserRouter.Use(middleware.JWTAuthMiddleware())
