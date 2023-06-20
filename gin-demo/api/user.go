@@ -19,7 +19,7 @@ const (
 	userName = "root"
 	Password = "123456"
 	ip       = "ten.ferdinandaedth.top"
-	port     = "3306"
+	port     = "32403"
 	dbName   = "userdb"
 )
 

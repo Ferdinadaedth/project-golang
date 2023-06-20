@@ -55,6 +55,7 @@ func JWTAuthMiddleware() func(c *gin.Context) {
 			"msg":  "success",
 			"user": mc.Username,
 		})*/
+
 		c.Abort()
 		return
 	}
