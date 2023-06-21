@@ -17,9 +17,9 @@ import (
 
 const (
 	userName = "root"
-	Password = "123456"
-	ip       = "ten.ferdinandaedth.top"
-	port     = "32403"
+	Password = "yx041110"
+	ip       = "127.0.0.1"
+	port     = "3306"
 	dbName   = "userdb"
 )
 
