@@ -411,18 +411,6 @@ func changepassword(c *gin.Context) {
 	utils.RespSuccess(c, "password changed")
 }
 
-/*func AddMessage(c *gin.Context) {
-	Id := c.PostForm("id")
-	messageText := c.PostForm("text")
-	message := model.Message{
-		Id:        Id,
-		Text:      messageText,
-		CreatedAt: time.Now(),
-	}
-	dao.AddMessage(message)
-	utils.RespSuccess(c, "add message successful")
-}*/
-
 // 新增以下代码
 func getUsernameFromToken(c *gin.Context) {
 	username, _ := c.Get("username")
