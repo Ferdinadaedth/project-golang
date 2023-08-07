@@ -2,35 +2,50 @@ package model
 
 import (
 	"github.com/dgrijalva/jwt-go"
-	"time"
 )
 
+type Userre struct {
+	Username string `form:"username" json:"username" binding:"required"`
+	Password string `form:"password" json:"password" binding:"required"`
+	Email    string `form:"email" json:"email" binding:"required"`
+}
 type User struct {
 	Username string `form:"username" json:"username" binding:"required"`
 	Password string `form:"password" json:"password" binding:"required"`
 }
 type Getquestion struct {
-	Id       int    `json:"id"`
-	Username string `json:"username"`
-	Question string `json:"question"`
+	Questionid int    `json:"questionid"`
+	Username   string `json:"username"`
+	Question   string `json:"question"`
+}
+type Getmessage struct {
+	Messageid int    `json:"messageid"`
+	Sender    string `json:"sender"`
+	Receiver  string `json:"receiver"`
+	Content   string `json:"content"`
 }
 type Getanswer struct {
-	Id         int    `json:"id"`
+	Id         int    `json:"answerid"`
 	Questionid string `json:"questionid"`
 	Username   string `json:"username"`
 	Answer     string `json:"answer"`
+	Pid        string `json:"pid"`
 }
 type Question struct {
-	question string `form:"question" json:"question" binding:"required"`
+	Question string `form:"question" json:"question" binding:"required"`
 }
 type Answer struct {
-	question string `form:"question" json:"question" binding:"required"`
-	answer   string `form:"answer" json:"answer" binding:"required"`
+	Questionid string `form:"questionid" json:"questionid" binding:"required"`
+	Answer     string `form:"answer" json:"answer" binding:"required"`
 }
+type Comment struct {
+	Answerid string `form:"answerid" json:"answerid" binding:"required"`
+	Comment  string `form:"comment" json:"comment" binding:"required"`
+}
+
 type Message struct {
-	Id        string `form:"Id" json:"id" binding:"required"`
-	Text      string `form:"Text" json:"Text" binding:"required"`
-	CreatedAt time.Time
+	content  string `form:"content" json:"content" binding:"required"`
+	receiver string `form:"recerver" json:"receiver" binding:"required"`
 }
 type MyClaims struct {
 	Username string `json:"username"`

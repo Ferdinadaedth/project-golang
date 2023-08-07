@@ -7,14 +7,14 @@ import (
 
 func RespSuccess(c *gin.Context, message string) {
 	c.JSON(http.StatusOK, gin.H{
-		"status":  200,
+		"status":  "200",
 		"message": message,
 	})
 }
 
 func RespFail(c *gin.Context, message string) {
-	c.JSON(http.StatusInternalServerError, gin.H{
-		"status":  500,
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "500",
 		"message": message,
 	})
 }

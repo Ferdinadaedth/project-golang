@@ -6,9 +6,11 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"golandprojects/api/middleware"
+	"golandprojects/cache"
 	"golandprojects/dao"
 	"golandprojects/model"
 	"golandprojects/utils"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"strconv"
@@ -22,6 +24,33 @@ const (
 	port     = "3306"
 	dbName   = "userdb"
 )
+
+func GetALlQuestions(c *gin.Context) {
+	var questions []model.Getquestion
+	err := cache.GetCache("allQuestions", &questions)
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{
+			"status":    200,
+			"questions": questions,
+		})
+		return
+	}
+
+	questions, err = dao.GetAllQuestions()
+	if err != nil {
+		utils.RespFail(c, "get all questions error")
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"status":    200,
+		"questions": questions,
+	})
+	err = cache.SetCache("allQuestions", &questions)
+	if err != nil {
+		return
+	}
+}
 
 func question(c *gin.Context) {
 	if err := c.ShouldBind(&model.Question{}); err != nil {
@@ -38,20 +67,27 @@ func question(c *gin.Context) {
 	}
 	username, ok := value.(string)
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "username is not a string"})
+		//c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "username is not a string"})
 		return
 	}
 	dao.Addquestion(username, question)
+	err := cache.DeleteCache("allQuestions")
+	if err != nil {
+		log.Fatal(err.Error)
+	}
+
 	utils.RespSuccess(c, "successfully post the question")
+
 }
 func getquestion(c *gin.Context) {
+	questionid := c.PostForm("questionid")
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
 	var allquestion []model.Getquestion
-	rows, errq := db.Query("select id,username,question from question")
+	rows, errq := db.Query("select questionid,username,question from question where questionid = ?", questionid)
 	if errq != nil {
 		log.Fatal(errq.Error)
 		return
@@ -59,7 +95,7 @@ func getquestion(c *gin.Context) {
 	//遍历结果
 	for rows.Next() {
 		var u model.Getquestion
-		errn := rows.Scan(&u.Id, &u.Username, &u.Question)
+		errn := rows.Scan(&u.Questionid, &u.Username, &u.Question)
 		if errn != nil {
 			fmt.Printf("%v", errn)
 		}
@@ -67,7 +103,7 @@ func getquestion(c *gin.Context) {
 		allquestion = append(allquestion, u)
 	}
 
-	c.JSON(http.StatusOK, gin.H{"res": allquestion})
+	c.JSON(http.StatusOK, gin.H{"question": allquestion})
 
 }
 func deleteq(c *gin.Context) {
@@ -85,7 +121,7 @@ func deleteq(c *gin.Context) {
 	if !flag {
 		utils.RespFail(c, "question doesn't exists")
 	}
-	_, err = db.Exec("delete from question where id=?", questionid)
+	_, err = db.Exec("delete from question where questionid=?", questionid)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -100,6 +136,10 @@ func deleteq(c *gin.Context) {
 			panic(err.Error())
 		}
 	}
+	err = cache.DeleteCache("allQuestions")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
 	utils.RespSuccess(c, "successfully delete the question")
 }
 func deletea(c *gin.Context) {
@@ -108,18 +148,18 @@ func deletea(c *gin.Context) {
 		panic(err.Error())
 	}
 	defer db.Close()
-	answer := c.PostForm("id")
+	answer := c.PostForm("answerid")
 	answerid, abc := strconv.Atoi(answer)
 	if abc != nil {
 		panic(abc)
 	}
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM answer WHERE id=?", answerid).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM answer WHERE answerid=?", answerid).Scan(&count)
 	if err != nil {
 		panic(err.Error())
 	}
 	if count > 0 {
-		_, err = db.Exec("delete from answer where id=?", answerid)
+		_, err = db.Exec("delete from answer where answerid=?", answerid)
 		if err != nil {
 			panic(err.Error())
 		}
@@ -135,7 +175,12 @@ func getanswer(c *gin.Context) {
 	}
 	defer db.Close()
 	var allanswer []model.Getanswer
-	rows, errq := db.Query("select id,questionid,username,answer from answer")
+	questionidstr := c.PostForm("questionid")
+	questionid, abc := strconv.Atoi(questionidstr)
+	if abc != nil {
+		panic(abc)
+	}
+	rows, errq := db.Query("select answerid,questionid,username,answer,pid from answer WHERE questionid = ?", questionid)
 	if errq != nil {
 		log.Fatal(errq.Error)
 		return
@@ -143,7 +188,7 @@ func getanswer(c *gin.Context) {
 	//遍历结果
 	for rows.Next() {
 		var u model.Getanswer
-		errn := rows.Scan(&u.Id, &u.Questionid, &u.Username, &u.Answer)
+		errn := rows.Scan(&u.Id, &u.Questionid, &u.Username, &u.Answer, &u.Pid)
 		if errn != nil {
 			fmt.Printf("%v", errn)
 		}
@@ -154,12 +199,13 @@ func getanswer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"res": allanswer})
 }
 func answer(c *gin.Context) {
-	if err := c.ShouldBind(&model.Answer{}); err != nil {
+	if err := c.ShouldBind(&model.Getanswer{}); err != nil {
 		utils.RespSuccess(c, "verification failed")
 		return
 	}
 	answer := c.PostForm("answer")
 	question := c.PostForm("questionid")
+	pidstr := c.PostForm("pid")
 	value, exists := c.Get("username")
 	if !exists {
 		// 变量不存在，处理错误
@@ -174,25 +220,33 @@ func answer(c *gin.Context) {
 		return
 	}
 	questionid, abc := strconv.Atoi(question)
+	pid, abc := strconv.Atoi(pidstr)
 	if abc != nil {
 		panic(abc)
 	}
 	flag := dao.Selectquestion(questionid)
 	if !flag {
 		utils.RespFail(c, "question doesn't exists")
+		return
 	}
-	err := dao.Addanswer(questionid, username, answer)
+	if pid != 0 {
+		flag1 := dao.Selectanswer(pid)
+		if !flag1 {
+			utils.RespFail(c, "answer doesn't exists")
+		}
+	}
+
+	err := dao.Addanswer(questionid, username, answer, pid)
 	if err != nil {
 		utils.RespFail(c, "unable to answer")
 		return
 	}
-	utils.RespSuccess(c, "successfully answered the question")
+	utils.RespSuccess(c, "successfully answered")
 
 }
 func modifya(c *gin.Context) {
 	answer := c.PostForm("answer")
-	questionstr := c.PostForm("questionid")
-	answerstr := c.PostForm("id")
+	answerstr := c.PostForm("answerid")
 	value, exists := c.Get("username")
 	if !exists {
 		// 变量不存在，处理错误
@@ -201,14 +255,7 @@ func modifya(c *gin.Context) {
 		})
 		return
 	}
-	questionid, err := strconv.Atoi(questionstr)
-	if err != nil {
-		// 处理错误
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "invalid questionid",
-		})
-		return
-	}
+
 	answerid, err := strconv.Atoi(answerstr)
 	if err != nil {
 		// 处理错误
@@ -222,11 +269,11 @@ func modifya(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "username is not a string"})
 		return
 	}
-	dao.Updateanswer(username, answerid, questionid, answer)
+	dao.Updateanswer(username, answerid, answer)
 	utils.RespSuccess(c, "successfully modify the answer")
 }
 func modifyq(c *gin.Context) {
-	questionstr := c.PostForm("id")
+	questionstr := c.PostForm("questionid")
 	question := c.PostForm("question")
 	value, exists := c.Get("username")
 	if !exists {
@@ -250,15 +297,19 @@ func modifyq(c *gin.Context) {
 		return
 	}
 	dao.UpdateQuestin(username, questionid, question)
+	err = cache.DeleteCache("allQuestions")
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+
 	utils.RespSuccess(c, "successfully modify the question")
 }
-func getqa(c *gin.Context) {
+func getuserquestion(c *gin.Context) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
-	var allanswer []model.Getanswer
 	var allquestion []model.Getquestion
 	value, exists := c.Get("username")
 	if !exists {
@@ -268,31 +319,45 @@ func getqa(c *gin.Context) {
 		})
 		return
 	}
-	rowsa, errqa := db.Query("select id,questionid,username,answer from answer where username = ?", value)
-	if errqa != nil {
-		log.Fatal(errqa.Error)
-		return
-	}
-	rowsq, errqq := db.Query("select id,username,question from question where username = ?", value)
+	rowsq, errqq := db.Query("select questionid,username,question from question where username = ?", value)
 	if errqq != nil {
 		log.Fatal(errqq.Error)
 		return
 	}
 	for rowsq.Next() {
 		var u model.Getquestion
-		errn := rowsq.Scan(&u.Id, &u.Username, &u.Question)
+		errn := rowsq.Scan(&u.Questionid, &u.Username, &u.Question)
 		if errn != nil {
 			fmt.Printf("%v", errn)
 		}
 
 		allquestion = append(allquestion, u)
 	}
-
 	c.JSON(http.StatusOK, gin.H{"res": allquestion})
-	c.JSON(http.StatusOK, gin.H{"res": allanswer})
+}
+func getuseranswer(c *gin.Context) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	var allanswer []model.Getanswer
+	value, exists := c.Get("username")
+	if !exists {
+		// 变量不存在，处理错误
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "username not found",
+		})
+		return
+	}
+	rowsa, errqa := db.Query("select answerid,questionid,username,answer,pid from answer where username = ?", value)
+	if errqa != nil {
+		log.Fatal(errqa.Error)
+		return
+	}
 	for rowsa.Next() {
 		var u model.Getanswer
-		errn := rowsa.Scan(&u.Id, &u.Questionid, &u.Username, &u.Answer)
+		errn := rowsa.Scan(&u.Id, &u.Questionid, &u.Username, &u.Answer, &u.Pid)
 		if errn != nil {
 			fmt.Printf("%v", errn)
 		}
@@ -303,14 +368,14 @@ func getqa(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"res": allanswer})
 }
 func register(c *gin.Context) {
-	if err := c.ShouldBind(&model.User{}); err != nil {
-		utils.RespSuccess(c, "verification failed")
+	if err := c.ShouldBind(&model.Userre{}); err != nil {
+		utils.RespFail(c, "verification failed")
 		return
 	}
 	// 传入用户名和密码
 	username := c.PostForm("username")
 	password := c.PostForm("password")
-
+	email := c.PostForm("email")
 	// 验证用户名是否重复
 	flag := dao.SelectUser(username)
 	fmt.Println(flag)
@@ -319,15 +384,18 @@ func register(c *gin.Context) {
 		utils.RespFail(c, "user already exists")
 		return
 	}
-
-	dao.AddUser(username, password)
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost) //加密处理
+	if err != nil {
+		fmt.Println(err)
+	}
+	encodePWD := string(hash)
+	dao.AddUser(username, encodePWD, email)
 	// 以 JSON 格式返回信息
 	utils.RespSuccess(c, "add user successful")
 }
 func findpassword(c *gin.Context) {
 	// 传入用户名和密码
 	username := c.PostForm("username")
-	selectPassword := dao.SelectPasswordFromUsername(username)
 	flag := dao.SelectUser(username)
 	// 不存在则退出
 	if !flag {
@@ -335,8 +403,10 @@ func findpassword(c *gin.Context) {
 		utils.RespFail(c, "user doesn't exists")
 		return
 	}
-	c.SetCookie("gin_demo_cookie", "test", 3600, "/", "localhost", false, true)
-	utils.RespSuccess(c, fmt.Sprintf("find successful,%s", selectPassword))
+	email := dao.Selectemail(username)
+	selectPassword := dao.SelectPasswordFromUsername(username)
+	dao.Findpassword(email, selectPassword)
+	utils.RespSuccess(c, fmt.Sprintf("successfully post the password to the email"))
 }
 
 // 仅有登录部分有改动
@@ -361,13 +431,13 @@ func login(c *gin.Context) {
 	// 查找正确的密码
 	selectPassword := dao.SelectPasswordFromUsername(username)
 	// 若不正确则传出错误
-	if selectPassword != password {
-		// 以 JSON 格式返回信息
+	err := bcrypt.CompareHashAndPassword([]byte(selectPassword), []byte(password)) //验证（对比）
+	if err != nil {
 		utils.RespFail(c, "wrong password")
 		return
 	}
 	c.SetCookie("gin_demo_cookie", "test", 3600, "/", "localhost", false, true)
-	utils.RespSuccess(c, "login successful")
+	//utils.RespSuccess(c, "login successful")
 	// 正确则登录成功
 	// 创建一个我们自己的声明
 	claim := model.MyClaims{
@@ -381,7 +451,12 @@ func login(c *gin.Context) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claim)
 	// 使用指定的secret签名并获得完整的编码后的字符串token
 	tokenString, _ := token.SignedString(middleware.Secret)
-	utils.RespSuccess(c, tokenString)
+	//utils.RespSuccess(c, tokenString)
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "200",
+		"message": "登录成功",
+		"token":   tokenString,
+	})
 }
 func changepassword(c *gin.Context) {
 	username := c.PostForm("username")
@@ -397,13 +472,19 @@ func changepassword(c *gin.Context) {
 	}
 	// 验证旧密码是否正确
 	selectPassword := dao.SelectPasswordFromUsername(username)
-	if selectPassword != oldpassword {
-		utils.RespFail(c, "old password is incorrect")
+	err := bcrypt.CompareHashAndPassword([]byte(selectPassword), []byte(oldpassword)) //验证（对比）
+	if err != nil {
+		utils.RespFail(c, "wrong oldpassword")
 		return
 	}
 	// 更新密码
-	err := dao.UpdatePassword(username, newpassword, oldpassword)
-	if err != nil {
+	hash, err2 := bcrypt.GenerateFromPassword([]byte(newpassword), bcrypt.DefaultCost) //加密处理
+	if err2 != nil {
+		fmt.Println(err)
+	}
+	encodePWD := string(hash)
+	err1 := dao.UpdatePassword(username, encodePWD, oldpassword)
+	if err1 != nil {
 		utils.RespFail(c, "unable to change password")
 		return
 	}
@@ -414,5 +495,8 @@ func changepassword(c *gin.Context) {
 // 新增以下代码
 func getUsernameFromToken(c *gin.Context) {
 	username, _ := c.Get("username")
-	utils.RespSuccess(c, username.(string))
+	c.JSON(http.StatusOK, gin.H{
+		"status":   "200",
+		"username": username,
+	})
 }

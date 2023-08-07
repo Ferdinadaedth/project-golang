@@ -4,6 +4,9 @@ import (
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
+	"golandprojects/model"
+	"gopkg.in/gomail.v2"
+	"log"
 )
 
 // 数据库连接信息
@@ -14,6 +17,36 @@ const (
 	port     = "3306"
 	dbName   = "userdb"
 )
+
+func GetAllQuestions() ([]model.Getquestion, error) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	var allquestion []model.Getquestion
+	rows, errq := db.Query("select questionid,username,question from question")
+	if errq != nil {
+		log.Fatal(errq.Error)
+		return allquestion, err
+	}
+	//遍历结果
+	for rows.Next() {
+		var u model.Getquestion
+		errn := rows.Scan(&u.Questionid, &u.Username, &u.Question)
+		if errn != nil {
+			fmt.Printf("%v", errn)
+		}
+
+		allquestion = append(allquestion, u)
+	}
+
+	if err = rows.Err(); err != nil {
+		return allquestion, err
+	}
+
+	return allquestion, nil
+}
 
 func Addquestion(username, description string) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
@@ -34,7 +67,7 @@ func Selectquestion(questionid int) bool {
 	}
 	defer db.Close()
 	var count int
-	err = db.QueryRow("SELECT COUNT(*) FROM question WHERE id=?", questionid).Scan(&count)
+	err = db.QueryRow("SELECT COUNT(*) FROM question WHERE questionid=?", questionid).Scan(&count)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -44,17 +77,71 @@ func Selectquestion(questionid int) bool {
 		return false
 	}
 }
-func Addanswer(questionid int, username, description string) error {
+func Selectanswer(pid int) bool {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
-	_, err = db.Exec("INSERT INTO answer (questionid,username,answer) VALUES (?, ?,?)", questionid, username, description)
+	var count int
+	err = db.QueryRow("SELECT COUNT(*) FROM answer WHERE answerid=?", pid).Scan(&count)
+	if err != nil {
+		panic(err.Error())
+	}
+	if count > 0 {
+		return true
+	} else {
+		return false
+	}
+}
+func Addanswer(questionid int, username, description string, pid int) error {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+	_, err = db.Exec("INSERT INTO answer (questionid,username,answer,pid) VALUES (?, ?,?,?)", questionid, username, description, pid)
 	if err != nil {
 		panic(err.Error())
 	}
 	return nil
+}
+func Findpassword(email string, password string) {
+	m := gomail.NewMessage()
+
+	//发送人
+	m.SetHeader("From", "2794954964@qq.com")
+	//接收人
+	m.SetHeader("To", email)
+	//主题
+	m.SetHeader("Subject", "找回密码")
+	//内容
+	m.SetBody("text", password)
+	//拿到token，并进行连接,第4个参数是填授权码
+	d := gomail.NewDialer("smtp.qq.com", 587, "2794954964@qq.com", "zkfsgcjtbapiddha")
+
+	// 发送邮件
+	if err := d.DialAndSend(m); err != nil {
+		fmt.Printf("DialAndSend err %v:", err)
+		panic(err)
+	}
+	fmt.Printf("send mail success\n")
+}
+func Selectemail(username string) string {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	// 查询用户名是否存在
+	var email string
+	err = db.QueryRow("SELECT email FROM user WHERE username=?", username).Scan(&email)
+	if err != nil {
+		panic(err.Error())
+	}
+	return email
+
 }
 
 // SelectUser 根据用户名查询用户是否存在
@@ -80,7 +167,7 @@ func SelectUser(username string) bool {
 }
 
 // AddUser 添加用户
-func AddUser(username, password string) {
+func AddUser(username, password, email string) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
 	if err != nil {
 		panic(err.Error())
@@ -88,7 +175,20 @@ func AddUser(username, password string) {
 	defer db.Close()
 
 	// 插入用户记录
-	_, err = db.Exec("INSERT INTO user (username, password) VALUES (?, ?)", username, password)
+	_, err = db.Exec("INSERT INTO user (username, password,email) VALUES (?, ?,?)", username, password, email)
+	if err != nil {
+		panic(err.Error())
+	}
+}
+func Addmessage(reveiver, sender, message string) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	// 插入用户记录
+	_, err = db.Exec("INSERT INTO message (sender, receiver,content) VALUES (?, ?,?)", sender, reveiver, message)
 	if err != nil {
 		panic(err.Error())
 	}
@@ -135,7 +235,7 @@ func UpdateQuestin(username string, questionid int, question string) error {
 		panic(err.Error())
 	}
 	defer db.Close()
-	stmt, err := db.Prepare("UPDATE `question` SET `question` =? WHERE `username` = ? AND `id` = ?")
+	stmt, err := db.Prepare("UPDATE `question` SET `question` =? WHERE `username` = ? AND `questionid` = ?")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -148,19 +248,19 @@ func UpdateQuestin(username string, questionid int, question string) error {
 
 	return nil
 }
-func Updateanswer(username string, questionid int, id int, answer string) error {
+func Updateanswer(username string, id int, answer string) error {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
 	if err != nil {
 		panic(err.Error())
 	}
 	defer db.Close()
-	stmt, err := db.Prepare("UPDATE `answer` SET `answer` =? WHERE `username` = ? AND `id` = ? AND `questionid` = ?")
+	stmt, err := db.Prepare("UPDATE `answer` SET `answer` =? WHERE `username` = ? AND `answerid` = ? ")
 	if err != nil {
 		panic(err.Error())
 	}
 	defer stmt.Close()
 	// 执行更新操作
-	_, err = stmt.Exec(answer, username, id, questionid)
+	_, err = stmt.Exec(answer, username, id)
 	if err != nil {
 		return err
 	}
