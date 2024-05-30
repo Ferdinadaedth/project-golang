@@ -42,6 +42,7 @@ func GetNotification(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "username is not a string"})
 		return
 	}
+	fmt.Println(username)
 
 	str1 := "SELECT userid from user WHERE username = ?"
 	row, err := db.Query(str1, username)
@@ -52,11 +53,12 @@ func GetNotification(c *gin.Context) {
 	var rID string
 	row.Next()
 	err = row.Scan(&rID)
+	fmt.Println(rID)
 	if err != nil {
 		panic(err)
 	}
 
-	str2 := "SELECT notificationID,senderUserID,notificationType,notificationTime FROM notification WHERE recipientUserID=?"
+	str2 := "SELECT notificationID,recipientUserID,notificationType,notificationTime FROM notification WHERE recipientUserID=?"
 	rows, err := db.Query(str2, rID)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute query"})
@@ -66,8 +68,8 @@ func GetNotification(c *gin.Context) {
 	defer rows.Close()
 	for rows.Next() {
 		var notification model.Notification
-		err = rows.Scan(&notification.NotificationID, &notification.RecipientUserID, &notification.SenderUserID, &notification.NotificationType, &notification.NotificationTime)
-		fmt.Println(err)
+		err = rows.Scan(&notification.NotificationID, &notification.RecipientUserID, &notification.NotificationType, &notification.NotificationTime)
+		notification.SenderUserName = username
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan result"})
 			return
