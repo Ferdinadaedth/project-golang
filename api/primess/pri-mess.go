@@ -82,7 +82,7 @@ func GetNotification(c *gin.Context) {
 	}
 
 	// 返回JSON响应
-	c.JSON(http.StatusOK, notifications)
+	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
 }
 
 func Message(c *gin.Context) {
