@@ -19,8 +19,8 @@ import (
 
 const (
 	userName = "root"
-	Password = "yx041110"
-	ip       = "127.0.0.1"
+	Password = "h74o+JIi5SpSY3MU"
+	ip       = "47.108.208.111"
 	port     = "3306"
 	dbName   = "userdb"
 )
@@ -199,6 +199,7 @@ func getanswer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"res": allanswer})
 }
 func answer(c *gin.Context) {
+	const notificationType = "Answer"
 	if err := c.ShouldBind(&model.Getanswer{}); err != nil {
 		utils.RespSuccess(c, "verification failed")
 		return
@@ -206,6 +207,7 @@ func answer(c *gin.Context) {
 	answer := c.PostForm("answer")
 	question := c.PostForm("questionid")
 	pidstr := c.PostForm("pid")
+
 	value, exists := c.Get("username")
 	if !exists {
 		// 变量不存在，处理错误
@@ -241,6 +243,9 @@ func answer(c *gin.Context) {
 		utils.RespFail(c, "unable to answer")
 		return
 	}
+	dao.Notification(question, username, notificationType)
+	fmt.Println("存储通知成功")
+
 	utils.RespSuccess(c, "successfully answered")
 
 }

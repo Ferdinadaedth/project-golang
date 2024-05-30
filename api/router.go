@@ -39,6 +39,7 @@ func InitRouter() {
 	r.POST("/getsendingmessage", middleware.JWTAuthMiddleware(), primess.Getsendingmessage)
 	r.POST("/modifym", middleware.JWTAuthMiddleware(), primess.Updatem)
 	r.POST("/deletem", middleware.JWTAuthMiddleware(), primess.Deletem)
+	r.POST("/notifications", middleware.JWTAuthMiddleware(), primess.GetNotification)
 	UserRouter := r.Group("/user")
 	{
 		UserRouter.Use(middleware.JWTAuthMiddleware())

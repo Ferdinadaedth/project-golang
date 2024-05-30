@@ -13,7 +13,6 @@ func Follow(c *gin.Context) {
 	if !exists {
 		// 变量不存在，处理错误
 		utils.RespFail(c, "username not found")
-
 		return
 	}
 	username, ok := value.(string)

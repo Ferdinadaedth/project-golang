@@ -7,16 +7,51 @@ import (
 	"golandprojects/model"
 	"gopkg.in/gomail.v2"
 	"log"
+	"time"
 )
 
 // 数据库连接信息
 const (
 	userName = "root"
-	Password = "yx041110"
-	ip       = "127.0.0.1"
+	Password = "h74o+JIi5SpSY3MU"
+	ip       = "47.108.208.111"
 	port     = "3306"
 	dbName   = "userdb"
 )
+
+func Notification(questionID, currentUsername, notificationType string) {
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	str1 := "SELECT username from question where questionid=?"
+	row := db.QueryRow(str1, questionID)
+	var username string
+	if err = row.Scan(&username); err != nil {
+		panic(err.Error())
+	}
+
+	str2 := "SELECT userid from user where username=?"
+	row = db.QueryRow(str2, username)
+	var recipientUserID string
+	if err = row.Scan(&recipientUserID); err != nil {
+		panic(err.Error())
+	}
+
+	str3 := "SELECT userid from user where username=?"
+	row = db.QueryRow(str3, currentUsername)
+	var senderUserID string
+	if err = row.Scan(&senderUserID); err != nil {
+		panic(err.Error())
+	}
+	now := time.Now()
+	notificationTime := now.Format("2006-01-02 15:04:05")
+
+	str4 := "INSERT INTO notification (recipientUserID,senderUserID,notificationType,notificationTime) VALUES (?,?,?,?)"
+	_, err = db.Exec(str4, recipientUserID, senderUserID, notificationType, notificationTime)
+}
 
 func GetAllQuestions() ([]model.Getquestion, error) {
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
@@ -163,7 +198,6 @@ func SelectUser(username string) bool {
 	} else {
 		return false
 	}
-
 }
 
 // AddUser 添加用户

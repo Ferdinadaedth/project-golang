@@ -6,8 +6,8 @@ var client *redis.Client
 
 func InitLike() {
 	client = redis.NewClient(&redis.Options{
-		Addr:     "43.138.59.103:30260",
-		Password: "123456", // Redis数据库没有密码
-		DB:       0,        // 默认数据库为0
+		Addr:     "47.108.208.111:6379",
+		Password: "h74o+JIi5SpSY3MU", // Redis数据库没有密码
+		DB:       0,                  // 默认数据库为0
 	})
 }
