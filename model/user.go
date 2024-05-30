@@ -17,6 +17,7 @@ type Getquestion struct {
 	Questionid int    `json:"questionid"`
 	Username   string `json:"username"`
 	Question   string `json:"question"`
+	Label      string `json:"label"`
 }
 type Getmessage struct {
 	Messageid int    `json:"messageid"`

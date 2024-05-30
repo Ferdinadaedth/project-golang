@@ -199,7 +199,7 @@ func getanswer(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"res": allanswer})
 }
 func answer(c *gin.Context) {
-	const notificationType = "Answer"
+	const notificationType = "给你评论了"
 	if err := c.ShouldBind(&model.Getanswer{}); err != nil {
 		utils.RespSuccess(c, "verification failed")
 		return

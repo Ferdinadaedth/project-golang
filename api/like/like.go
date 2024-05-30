@@ -10,7 +10,7 @@ import (
 )
 
 func Like(c *gin.Context) {
-	const notificationType = "Like"
+	const notificationType = "给你点赞"
 
 	value, exists := c.Get("username")
 	if !exists {
