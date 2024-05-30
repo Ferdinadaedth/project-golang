@@ -2,7 +2,6 @@ package model
 
 import (
 	"github.com/dgrijalva/jwt-go"
-	"time"
 )
 
 type Userre struct {
@@ -54,9 +53,9 @@ type MyClaims struct {
 }
 
 type Notification struct {
-	NotificationID   int       `json:"notification_id"`
-	RecipientUserID  int       `json:"recipient_user_id"`
-	SenderUserID     int       `json:"sender_user_id"`
-	NotificationType string    `json:"notification_type"`
-	NotificationTime time.Time `json:"notification_time"`
+	NotificationID   int     `json:"notification_id"`
+	RecipientUserID  int     `json:"recipient_user_id"`
+	SenderUserID     int     `json:"sender_user_id"`
+	NotificationType string  `json:"notification_type"`
+	NotificationTime []uint8 `json:"notification_time"`
 }

@@ -21,6 +21,7 @@ const (
 )
 
 func GetNotification(c *gin.Context) {
+	// 打开数据库连接
 	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
 	if err != nil {
 		panic(err.Error())
@@ -28,25 +29,59 @@ func GetNotification(c *gin.Context) {
 	defer db.Close()
 
 	var notifications []model.Notification
-
-	str := "SELECT notificationID,recipientUserID,senderUserID,notificationType,notificationTime FROM notification"
-	rows, err := db.Query(str)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+	value, exists := c.Get("username")
+	if !exists {
+		// 变量不存在，处理错误
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "username not found",
+		})
 		return
 	}
-	defer rows.Close()
+	username, ok := value.(string)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "username is not a string"})
+		return
+	}
 
+	str1 := "SELECT userid from user WHERE username = ?"
+	row, err := db.Query(str1, username)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+	defer row.Close()
+	var rID string
+	row.Next()
+	err = row.Scan(&rID)
+	if err != nil {
+		panic(err)
+	}
+
+	str2 := "SELECT notificationID,senderUserID,notificationType,notificationTime FROM notification WHERE recipientUserID=?"
+	rows, err := db.Query(str2, rID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute query"})
+		return
+	}
+
+	defer rows.Close()
 	for rows.Next() {
 		var notification model.Notification
 		err = rows.Scan(&notification.NotificationID, &notification.RecipientUserID, &notification.SenderUserID, &notification.NotificationType, &notification.NotificationTime)
+		fmt.Println(err)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan result"})
 			return
 		}
 		notifications = append(notifications, notification)
 	}
 
+	// 检查是否发生错误
+	if err = rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occurred during rows iteration"})
+		return
+	}
+
+	// 返回JSON响应
 	c.JSON(http.StatusOK, notifications)
 }
 
@@ -78,6 +113,7 @@ func Getmessage(c *gin.Context) {
 		panic(err.Error())
 	}
 	defer db.Close()
+
 	var allmessage []model.Getmessage
 	value, exists := c.Get("username")
 	if !exists {
