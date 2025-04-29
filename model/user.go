@@ -17,6 +17,7 @@ type Getquestion struct {
 	Questionid int    `json:"questionid"`
 	Username   string `json:"username"`
 	Question   string `json:"question"`
+	Label      string `json:"label"`
 }
 type Getmessage struct {
 	Messageid int    `json:"messageid"`
@@ -50,4 +51,12 @@ type Message struct {
 type MyClaims struct {
 	Username string `json:"username"`
 	jwt.StandardClaims
+}
+
+type Notification struct {
+	NotificationID   int     `json:"notification_id"`
+	RecipientUserID  int     `json:"recipient_user_id"`
+	SenderUserName   string  `json:"sender_user_name"`
+	NotificationType string  `json:"notification_type"`
+	NotificationTime []uint8 `json:"notification_time"`
 }

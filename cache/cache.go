@@ -12,9 +12,9 @@ var Cache *cache.Cache
 func InitCache() {
 	ring := redis.NewRing(&redis.RingOptions{
 		Addrs: map[string]string{
-			"shard1": "43.138.59.103:30260",
+			"shard1": "47.108.208.111:6379",
 		},
-		Password: "123456",
+		Password: "h74o+JIi5SpSY3MU",
 	})
 
 	Cache = cache.New(&cache.Options{

@@ -14,11 +14,78 @@ import (
 
 const (
 	userName = "root"
-	Password = "yx041110"
-	ip       = "127.0.0.1"
+	Password = "h74o+JIi5SpSY3MU"
+	ip       = "47.108.208.111"
 	port     = "3306"
 	dbName   = "userdb"
 )
+
+func GetNotification(c *gin.Context) {
+	// 打开数据库连接
+	db, err := sql.Open("mysql", fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", userName, Password, ip, port, dbName))
+	if err != nil {
+		panic(err.Error())
+	}
+	defer db.Close()
+
+	var notifications []model.Notification
+	value, exists := c.Get("username")
+	if !exists {
+		// 变量不存在，处理错误
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "username not found",
+		})
+		return
+	}
+	username, ok := value.(string)
+	if !ok {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "username is not a string"})
+		return
+	}
+	fmt.Println(username)
+
+	str1 := "SELECT userid from user WHERE username = ?"
+	row, err := db.Query(str1, username)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	}
+	defer row.Close()
+	var rID string
+	row.Next()
+	err = row.Scan(&rID)
+	fmt.Println(rID)
+	if err != nil {
+		panic(err)
+	}
+
+	str2 := "SELECT notificationID,recipientUserID,notificationType,notificationTime FROM notification WHERE recipientUserID=?"
+	rows, err := db.Query(str2, rID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to execute query"})
+		return
+	}
+
+	defer rows.Close()
+	for rows.Next() {
+		var notification model.Notification
+		err = rows.Scan(&notification.NotificationID, &notification.RecipientUserID, &notification.NotificationType, &notification.NotificationTime)
+		notification.SenderUserName = username
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan result"})
+			return
+		}
+		notifications = append(notifications, notification)
+	}
+
+	// 检查是否发生错误
+	if err = rows.Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error occurred during rows iteration"})
+		return
+	}
+
+	// 返回JSON响应
+	c.JSON(http.StatusOK, gin.H{"notifications": notifications})
+}
 
 func Message(c *gin.Context) {
 	if err := c.ShouldBind(&model.Message{}); err != nil {
@@ -48,6 +115,7 @@ func Getmessage(c *gin.Context) {
 		panic(err.Error())
 	}
 	defer db.Close()
+
 	var allmessage []model.Getmessage
 	value, exists := c.Get("username")
 	if !exists {

@@ -1,13 +1,17 @@
 package like
 
 import (
+	"fmt"
 	"github.com/gin-gonic/gin"
+	"golandprojects/dao"
 	"golandprojects/dao/redis"
 	"golandprojects/utils"
 	"net/http"
 )
 
 func Like(c *gin.Context) {
+	const notificationType = "给你点赞"
+
 	value, exists := c.Get("username")
 	if !exists {
 		// 变量不存在，处理错误
@@ -25,13 +29,16 @@ func Like(c *gin.Context) {
 		return
 	}
 	questionID := c.PostForm("questionid")
-
 	err := redis.Like(username, questionID)
 	if err != nil {
 
 		utils.RespFail(c, "internal error")
 		return
 	}
+
+	dao.Notification(questionID, username, notificationType)
+	fmt.Println("存储通知成功")
+
 	utils.RespSuccess(c, "点赞成功")
 }
 func UnLike(c *gin.Context) {
